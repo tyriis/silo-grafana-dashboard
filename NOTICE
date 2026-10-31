@@ -12,9 +12,10 @@ contributed to by Adam Charnock.
   Forked from:   main @ 5ba0fb4072b2fecbabff2cedfdcb9cb58f9798a4
   Licence:       Apache License, Version 2.0 (see LICENSE)
 
-`dashboard.json` at the root of this repository is the original file, copied
-unmodified from the fork point above. The derivative work is
-`silo/dashboard.json`; it is the only file that was changed.
+This repository does not distribute the unmodified original. Its
+`dashboard.json` is the derivative work: the original file from the fork point
+above, with the changes listed below. The original is available from the source
+URL at that commit.
 
 The original dashboard is itself based on the "MinIO Dashboard" (#13502)
 published on the Grafana dashboard marketplace:
@@ -32,7 +33,7 @@ MinIO, Inc. or the Silo project.
 Modifications
 =============
 
-`silo/dashboard.json` is a modified version of `dashboard.json`, as permitted
+`dashboard.json` is a modified version of the original file, as permitted
 by section 4 (b) of the Apache License, Version 2.0. The changes are:
 
 1. Panels removed.

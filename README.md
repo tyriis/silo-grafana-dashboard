@@ -1,17 +1,20 @@
 # Silo / MinIO Metrics v3 Grafana Dashboard
 
 A Grafana dashboard for S3-compatible object storage that exposes the MinIO
-Metrics v3 API. This repository started as a copy of
+Metrics v3 API, derived from
 [FedericoAntoniazzi/minio-grafana-dashboard-metrics-v3](https://github.com/FedericoAntoniazzi/minio-grafana-dashboard-metrics-v3)
-and adds a variant for [Silo](https://github.com/pgsty/silo), the maintained
-MinIO fork.
+and retargeted at [Silo](https://github.com/pgsty/silo), the maintained MinIO
+fork.
+
+This repository carries one dashboard. The upstream file was replaced by the
+derivative rather than kept beside it, so `dashboard.json` here is **not** the
+original: it is the 13-panel Silo variant, and `NOTICE` lists every change.
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `dashboard.json` | The upstream dashboard, copied unmodified from the fork point. Kept so upstream changes stay diffable. |
-| `silo/dashboard.json` | The Silo variant: 13 panels, VictoriaMetrics-friendly, `host`-aware. This is the file to import. |
+| `dashboard.json` | The Silo variant: 13 panels, VictoriaMetrics-friendly, `host`-aware. This is the file to import. |
 | `NOTICE` | Attribution and the full list of modifications (Apache-2.0 §4(b)). |
 | `LICENSE` | Apache License 2.0, as distributed with the original work. |
 
@@ -28,9 +31,9 @@ That dashboard is itself based on [MinIO Dashboard (#13502)](https://grafana.com
 This repository is a derivative work; see `NOTICE` for every change made, and
 `LICENSE` for the terms. Not affiliated with or endorsed by MinIO, Inc.
 
-## The Silo variant
+## What it targets
 
-`silo/dashboard.json` targets a Silo (or MinIO) server scraped on the metrics
+`dashboard.json` targets a Silo (or MinIO) server scraped on the metrics
 v3 root path, one scrape job per instance, with the instance identified by a
 `host` label:
 
@@ -61,7 +64,7 @@ Requirements:
 
 ### Grafana UI
 
-Import `silo/dashboard.json`, then map `DS_PROMETHEUS` to your data source.
+Import `dashboard.json`, then map `DS_PROMETHEUS` to your data source.
 
 ### grafana-operator
 
@@ -77,7 +80,7 @@ spec:
   datasources:
     - datasourceName: victoriametrics
       inputName: DS_PROMETHEUS
-  url: https://raw.githubusercontent.com/tyriis/silo-grafana-dashboard/COMMIT_SHA/silo/dashboard.json
+  url: https://raw.githubusercontent.com/tyriis/silo-grafana-dashboard/COMMIT_SHA/dashboard.json
 ```
 
 Pin `COMMIT_SHA` rather than `main`, so what runs in the cluster matches a
@@ -88,7 +91,7 @@ reviewable commit.
 ```yaml
 dashboards:
   silo:
-    url: "https://raw.githubusercontent.com/tyriis/silo-grafana-dashboard/COMMIT_SHA/silo/dashboard.json"
+    url: "https://raw.githubusercontent.com/tyriis/silo-grafana-dashboard/COMMIT_SHA/dashboard.json"
     datasource:
       - name: DS_PROMETHEUS
         value: 'YOUR-DATA-SOURCE-NAME'
@@ -96,8 +99,7 @@ dashboards:
 
 ## Upstream README
 
-The sections below are inherited from the original project and describe the
-upstream dashboard.
+The sections below are inherited from the original project.
 
 ### Why This Project Exists
 
