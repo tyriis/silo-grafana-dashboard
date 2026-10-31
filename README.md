@@ -1,110 +1,144 @@
-# MinIO Metrics v3 Grafana Dashboard
+# Silo / MinIO Metrics v3 Grafana Dashboard
 
-## Overview
+A Grafana dashboard for S3-compatible object storage that exposes the MinIO
+Metrics v3 API. This repository started as a copy of
+[FedericoAntoniazzi/minio-grafana-dashboard-metrics-v3](https://github.com/FedericoAntoniazzi/minio-grafana-dashboard-metrics-v3)
+and adds a variant for [Silo](https://github.com/pgsty/silo), the maintained
+MinIO fork.
 
-This repository contains a community-maintained Grafana dashboard for MinIO object storage using the new Metrics v3 API.
-This project was created in response to MinIO's deprecation of Metrics v2 and their decision to focus solely on their embedded dashboard solution
-rather than supporting external Grafana dashboards (see [minio/minio#20678](https://github.com/minio/minio/issues/20678)).
+## Files
 
-This dashboard is based on the popular [MinIO Dashboard (#13502)](https://grafana.com/grafana/dashboards/13502-minio-dashboard/) from Grafana's marketplace,
-updated to work with MinIO's Metrics v3 API.
+| File | What it is |
+|---|---|
+| `dashboard.json` | The upstream dashboard, copied unmodified from the fork point. Kept so upstream changes stay diffable. |
+| `silo/dashboard.json` | The Silo variant: 13 panels, VictoriaMetrics-friendly, `host`-aware. This is the file to import. |
+| `NOTICE` | Attribution and the full list of modifications (Apache-2.0 §4(b)). |
+| `LICENSE` | Apache License 2.0, as distributed with the original work. |
 
-## Why This Project Exists
+## Attribution
 
-MinIO has deprecated their Metrics v2 API and shifted focus to their embedded dashboard solution.
-While this works for many users, there are several reasons you might prefer a Grafana dashboard:
+The original work is **"MinIO Metrics v3 Grafana Dashboard"** by
+**Federico Antoniazzi**, with contributions from **Adam Charnock**:
 
-- Integration with existing monitoring infrastructure
-- Customization capabilities beyond what the embedded dashboard offers
-- Unified monitoring across different systems in your infrastructure
-- Advanced alerting and notification features available in Grafana
+- Source: https://github.com/FedericoAntoniazzi/minio-grafana-dashboard-metrics-v3
+- Fork point: `main` @ `5ba0fb4072b2fecbabff2cedfdcb9cb58f9798a4`
+- Licence: Apache-2.0
 
-## Features
+That dashboard is itself based on [MinIO Dashboard (#13502)](https://grafana.com/grafana/dashboards/13502-minio-dashboard/).
+This repository is a derivative work; see `NOTICE` for every change made, and
+`LICENSE` for the terms. Not affiliated with or endorsed by MinIO, Inc.
 
-- **Updated for Metrics v3**: Fully compatible with MinIO's new metrics format
-- **Based on Established Dashboard**: Builds upon the widely-used MinIO Dashboard (#13502)
-- **Drop-in Replacement**: Designed to replace dashboards that were using the deprecated Metrics v2
-- **Comprehensive Metrics**: Monitors key MinIO performance indicators including:
-  - Throughput (read/write operations)
-  - Request latency
-  - Error rates
-  - Disk usage and capacity
-  - Node health status
-  - S3 API usage statistics
+## The Silo variant
 
-## Installation
+`silo/dashboard.json` targets a Silo (or MinIO) server scraped on the metrics
+v3 root path, one scrape job per instance, with the instance identified by a
+`host` label:
 
-### Prerequisites
+```yaml
+- job_name: minio
+  metrics_path: /minio/metrics/v3
+  static_configs:
+    - targets: ["127.0.0.1:9000"]
+  bearer_token: "<jwt>"
+```
 
-- Grafana (version 9.x or newer recommended)
-- MinIO configured with Prometheus metrics enabled
-- Prometheus server scraping MinIO metrics endpoints
+What differs from the upstream dashboard, in short: 13 panels instead of 37,
+no KMS / erasure-set / healing / internode / scanner-counter panels, per-bucket
+usage fixed to `sum` instead of `max`, zero-elided series held at 0 with
+`or vector(0)`, the scanner panel repointed at `minio_scanner_last_activity_seconds`,
+queries grouped `by (host)` so two single-node instances never double count, and
+the data source switched to `victoriametrics`. The full list is in `NOTICE`.
 
-### Setup Instructions
+Requirements:
 
-1. Download or copy the content of `dashboard.json`
+- Metrics v3 enabled: `GET /minio/metrics/v3` (the token needs the
+  `admin:Prometheus` action; the built-in `readonly` policy is not enough).
+- A `host` label on the scraped series — an external label on the scrape job is
+  the simplest way.
+- A Prometheus-compatible data source that holds those series.
 
-2. Import the dashboard into Grafana:
-   - Navigate to Grafana → Dashboards → Import
-   - Upload the JSON file or copy/paste its contents
-   - Select your Prometheus data source
-   - Click Import
+## Install
 
-3. Configure the dashboard variables (if needed) to match your environment
+### Grafana UI
 
-## Setup Instructions (Helm)
+Import `silo/dashboard.json`, then map `DS_PROMETHEUS` to your data source.
 
-If installing via Grafana's Helm chart, you can provision the dashboard as follows:
+### grafana-operator
+
+```yaml
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: silo
+spec:
+  instanceSelector:
+    matchLabels:
+      grafana.internal/instance: grafana
+  datasources:
+    - datasourceName: victoriametrics
+      inputName: DS_PROMETHEUS
+  url: https://raw.githubusercontent.com/tyriis/silo-grafana-dashboard/COMMIT_SHA/silo/dashboard.json
+```
+
+Pin `COMMIT_SHA` rather than `main`, so what runs in the cluster matches a
+reviewable commit.
+
+### Helm
 
 ```yaml
 dashboards:
-    minio-v3:
-      url: "https://raw.githubusercontent.com/FedericoAntoniazzi/minio-grafana-dashboard-metrics-v3/main/dashboard.json"
-      datasource:
-        - name: DS_PROMETHEUS
-          value: 'YOUR-DATA-SOURCE-NAME'
+  silo:
+    url: "https://raw.githubusercontent.com/tyriis/silo-grafana-dashboard/COMMIT_SHA/silo/dashboard.json"
+    datasource:
+      - name: DS_PROMETHEUS
+        value: 'YOUR-DATA-SOURCE-NAME'
 ```
 
-## Configuration
+## Upstream README
 
-This repository is only responsible for the dashboard.
-The configuration guide is available in the [documentation](https://min.io/docs/minio/container/operations/monitoring/metrics-and-alerts.html).
+The sections below are inherited from the original project and describe the
+upstream dashboard.
 
-## Migrating from Metrics v2
+### Why This Project Exists
 
-If you're updating from a dashboard that used MinIO's Metrics v2, note these key differences:
+MinIO has deprecated their Metrics v2 API and shifted focus to their embedded
+dashboard solution. While this works for many people, a Grafana dashboard is
+preferable when you want integration with an existing monitoring stack,
+customisation beyond the embedded dashboard, one view across systems, or
+alerting (see [minio/minio#20678](https://github.com/minio/minio/issues/20678)).
 
-- Metric names have changed (this dashboard accounts for these changes)
-- Some metrics have been consolidated or restructured
-- New metrics are available in v3 that weren't in v2
+### Features (upstream)
 
-## Key Differences from Original Dashboard
+- Updated for Metrics v3
+- Based on the widely-used MinIO Dashboard (#13502)
+- Drop-in replacement for dashboards built on Metrics v2
+- Monitors throughput, latency, error rates, capacity, node health and S3 API use
 
-This dashboard differs from the original [MinIO Dashboard (#13502)](https://grafana.com/grafana/dashboards/13502-minio-dashboard/) in the following ways:
+### Migrating from Metrics v2
 
-- Updated all metric queries to use the new Metrics v3 API naming conventions
-- Adjusted panel layouts and visualizations to accommodate changes in metric structure
+- Metric names changed; this dashboard accounts for that
+- Some metrics were consolidated or restructured
+- Metrics v3 adds series that v2 never had
 
-## Contributing
+### Limitations
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- Community-maintained, not supported by MinIO
+- Some features of the embedded dashboard are not replicated
+- Requires updating when MinIO changes its metrics format
+- Metrics v3 elides zero values, so panels need `or vector(0)`; a panel that
+  silently blanks is usually a healthy-but-idle series, not a broken query
 
-## Limitations
+### Contributing
 
-- This is a community-maintained project and is not officially supported by MinIO
-- Some advanced features in MinIO's embedded dashboard may not be replicated here
-- Dashboard may require updates when MinIO makes changes to their metrics format
+Pull requests are welcome, especially for metric-name drift as Silo and MinIO
+evolve.
 
-## License
+### Acknowledgements
 
-This project is licensed under the Apache 2.0 License - see the LICENSE file for details.
+- The MinIO team, for the object storage server
+- Contributors to [MinIO Dashboard (#13502)](https://grafana.com/grafana/dashboards/13502-minio-dashboard/)
+- Federico Antoniazzi and Adam Charnock, for the v3 port this repository builds on
 
-## Acknowledgements
+### Disclaimer
 
-- MinIO team for creating an excellent object storage server
-- Contributors to the original [MinIO Dashboard (#13502)](https://grafana.com/grafana/dashboards/13502-minio-dashboard/) that served as the foundation for this work
-- Community members who have tested and provided feedback
-
-## Disclaimer
-
-This project is not affiliated with or endorsed by MinIO, Inc. MinIO is a trademark of MinIO, Inc.
+Not affiliated with or endorsed by MinIO, Inc. MinIO is a trademark of MinIO, Inc.

@@ -1,0 +1,125 @@
+Silo — Object Storage dashboard
+===============================
+
+This repository contains a derivative work of the community dashboard "MinIO
+Metrics v3 Grafana Dashboard", published by Federico Antoniazzi and
+contributed to by Adam Charnock.
+
+  Original work: minio-grafana-dashboard-metrics-v3
+  Author:        Federico Antoniazzi
+  Contributor:   Adam Charnock
+  Source:        https://github.com/FedericoAntoniazzi/minio-grafana-dashboard-metrics-v3
+  Forked from:   main @ 5ba0fb4072b2fecbabff2cedfdcb9cb58f9798a4
+  Licence:       Apache License, Version 2.0 (see LICENSE)
+
+`dashboard.json` at the root of this repository is the original file, copied
+unmodified from the fork point above. The derivative work is
+`silo/dashboard.json`; it is the only file that was changed.
+
+The original dashboard is itself based on the "MinIO Dashboard" (#13502)
+published on the Grafana dashboard marketplace:
+https://grafana.com/grafana/dashboards/13502-minio-dashboard/
+
+The original work contains no NOTICE file, so there is no upstream NOTICE to
+reproduce here. The terms of the Apache License, Version 2.0 apply to the
+original work and to this modified version of it.
+
+MinIO is a trademark of MinIO, Inc. This dashboard is an independent
+derivative work and is not affiliated with, endorsed by, or sponsored by
+MinIO, Inc. or the Silo project.
+
+
+Modifications
+=============
+
+`silo/dashboard.json` is a modified version of `dashboard.json`, as permitted
+by section 4 (b) of the Apache License, Version 2.0. The changes are:
+
+1. Panels removed.
+
+   The original had 37 panels; this version keeps 13. The following original
+   panels were removed, grouped by the feature they covered:
+
+   - KMS (5 panels): KMS Uptime, KMS Request 4xx Error Rate,
+     KMS Online(1)/Offline(0), KMS Request 5xx Error Rate and
+     KMS Request Success Rate. The target deployment has no KMS.
+   - Erasure set and healing: Health Breakdown and Time Since Last Heal.
+   - Scanner counters: Scanned Objects, Scanned Versions,
+     Scanned Directories, Bucket Scans Started and Bucket Scans Finished.
+     "Time Since Last Scan" was not removed but repurposed, see item 5.
+   - Internode traffic: Internode Traffic. The target deployment is
+     single node.
+   - Process internals not needed for a single node deployment: Goroutines,
+     Open FDs, File Descriptors, Syscalls, Read/Write I/O, Memory Usage and
+     CPU Usage. Memory Usage and CPU Usage were folded into one new
+     "Process (CPU / RSS)" panel.
+   - Cluster and node counters that are constant on a single node cluster:
+     Cluster Health Status, Total Online Servers, Total Online/Offline
+     Drives, Total S3 Ingress, Total S3 Egress, S3 API Ingress Rate and
+     S3 API Egress Rate. The last two were merged into one new
+     "Network traffic" panel.
+   - Object size distribution: Object Size Distribution.
+   - Multi node capacity pie chart: Capacity. It was replaced by a new
+     "Capacity (usable)" time series panel.
+
+   The panels that were kept keep the visual template of the original panel
+   they were built from (panel type, field configuration and options). Only
+   the title, the description, the queries, the legends and the layout were
+   changed.
+
+2. Template variables added.
+
+   A `host` variable (`label_values({__name__=~"minio_.*"}, host)`) was added
+   and every query now filters on `host=~"$host"`. The `scrape_jobs` variable
+   was constrained to the Silo scrape job
+   (`label_values(minio_cluster_usage_objects_total_bytes, job)`) instead of
+   listing every job in the cluster, and every query filters on
+   `job=~"$scrape_jobs"`. The original aggregated across every scraped job
+   (bare `sum(...)` / `max(...)`, or `by (server)` / `by (instance)`); this
+   version groups by `host` (`sum by (host)` / `max by (host)`) because the
+   cluster level series carry a `host` label but no `server` label and are
+   emitted by every node, so a bare sum would count the same bytes twice.
+
+3. Per bucket usage fixed.
+
+   The original "Data Usage Growth" panel queried
+   `max(minio_cluster_usage_buckets_total_bytes)`, which reports only the
+   largest bucket. This version uses `sum by (host, bucket)` for the new
+   "Usage per bucket" table and `sum by (host)` for the "Data used" headline.
+
+4. `or vector(0)` added to rate expressions.
+
+   Silo v3 only exports values greater than zero, so a silent but healthy
+   node would blank a panel. Every rate expression is now wrapped in
+   `or vector(0)`. The two drive panels pair the drive metric with
+   `minio_system_drive_total_bytes` using
+   `or on(host, drive) (0 * ...)`, so a drive that stops reporting is held at
+   0 (0 bytes free, offline) instead of disappearing from the panel.
+
+5. Scanner metric repointed.
+
+   "Time Since Last Scan" pointed at `minio_usage_last_activity_nano_seconds`,
+   a metrics v2 name that Silo v3 no longer exports. It now reads
+   `minio_scanner_last_activity_seconds`, which reports seconds rather than
+   nanoseconds, and the "Uptime & scanner lag" panel also shows
+   `minio_cluster_usage_objects_since_last_update_seconds` to caption the age
+   of the usage metrics.
+
+6. Renamed to remove MinIO branding.
+
+   The dashboard title is "Silo — Object Storage", the uid is
+   `silo-object-storage` and the tags are `silo` and `storage`. Panel titles,
+   legends, descriptions and colour overrides were reworded accordingly, and
+   the links to other MinIO dashboards were removed.
+
+7. Data source changed.
+
+   The dashboard reads the `victoriametrics` data source instead of the
+   default `prometheus` one, because the Silo metrics are only present in a
+   central VictoriaMetrics store in the target deployment.
+
+8. Layout re-flowed, one panel type added.
+
+   The grid positions were re-flowed for the 13 panels. The original
+   dashboard had no table panel, so the new "Usage per bucket" panel is a
+   table built for this fork.
